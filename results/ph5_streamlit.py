@@ -124,8 +124,9 @@ class EmotionSarcasmApp:
         except Exception as e:
             # Try a compatibility fallback: some older model configs include
             # LSTM kwargs like 'time_major' which newer Keras may not accept
-            err_str = str(e)
-            st.warning(f"Initial model load failed: {err_str}")
+            # Log a short info message to avoid intrusive popups in the app UI.
+            # Full exception text is still available in deployment logs.
+            st.info("Initial model load failed: attempting compatibility fallbacks.")
 
             try:
                 from tensorflow.keras.layers import LSTM as KerasLSTM
