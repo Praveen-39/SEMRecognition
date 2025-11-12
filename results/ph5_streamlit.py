@@ -202,8 +202,15 @@ class EmotionSarcasmApp:
                                 except Exception:
                                     pass
 
-                    # Retry loading normally after sanitization
-                    model = keras.models.load_model(model_file)
+                    # Retry loading normally after sanitization. If the sanitized
+                    # model config still references a CompatLSTM class name
+                    # (from previous fallbacks), map it back to the real LSTM.
+                    from tensorflow.keras.layers import LSTM as KerasLSTM
+                    model = keras.models.load_model(
+                        model_file,
+                        custom_objects={'CompatLSTM': KerasLSTM, 'LSTM': KerasLSTM},
+                        compile=False
+                    )
                     with open(f'{_self.model_path}/label_encoder.pkl', 'rb') as f:
                         label_encoder = pickle.load(f)
                     with open(f'{_self.model_path}/scaler.pkl', 'rb') as f:
