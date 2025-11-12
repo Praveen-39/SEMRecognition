@@ -122,9 +122,99 @@ class EmotionSarcasmApp:
             return model, label_encoder, scaler
             
         except Exception as e:
-            st.error(f"Error loading models: {e}")
-            st.info("Please ensure Phase 3 is completed and models are saved.")
-            return None, None, None
+            # Try a compatibility fallback: some older model configs include
+            # LSTM kwargs like 'time_major' which newer Keras may not accept
+            err_str = str(e)
+            st.warning(f"Initial model load failed: {err_str}")
+
+            try:
+                from tensorflow.keras.layers import LSTM as KerasLSTM
+
+                class CompatLSTM(KerasLSTM):
+                    def __init__(self, *args, **kwargs):
+                        # Remove known incompatible kwargs saved in some Keras versions
+                        kwargs.pop('time_major', None)
+                        # Pass through remaining args/kwargs
+                        super().__init__(*args, **kwargs)
+
+                # Retry loading using the compatibility LSTM
+                model = keras.models.load_model(
+                    f'{_self.model_path}/emotion_recognition_model.h5',
+                    custom_objects={'LSTM': CompatLSTM},
+                    compile=False
+                )
+
+                # Load label encoder and scaler as before
+                with open(f'{_self.model_path}/label_encoder.pkl', 'rb') as f:
+                    label_encoder = pickle.load(f)
+
+                with open(f'{_self.model_path}/scaler.pkl', 'rb') as f:
+                    scaler = pickle.load(f)
+
+                # Recompile the model with the original compile settings
+                model.compile(
+                    optimizer=keras.optimizers.Adam(learning_rate=0.001),
+                    loss='categorical_crossentropy',
+                    metrics=['accuracy']
+                )
+
+                st.success('Model loaded with compatibility fallback.')
+                return model, label_encoder, scaler
+
+            except Exception as e2:
+                # Final attempt: sanitize the HDF5 model_config attribute to remove
+                # any saved `time_major` fields and retry loading.
+                try:
+                    import h5py, json
+                    model_file = f'{_self.model_path}/emotion_recognition_model.h5'
+
+                    def _remove_key_recursive(obj, key):
+                        if isinstance(obj, dict):
+                            if key in obj:
+                                obj.pop(key, None)
+                            for v in list(obj.values()):
+                                _remove_key_recursive(v, key)
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                _remove_key_recursive(item, key)
+
+                    # Open file and sanitize model_config if present
+                    with h5py.File(model_file, 'r+') as f:
+                        if 'model_config' in f.attrs:
+                            mc = f.attrs['model_config']
+                            try:
+                                if isinstance(mc, bytes):
+                                    mc = mc.decode('utf-8')
+                                cfg = json.loads(mc)
+                                _remove_key_recursive(cfg, 'time_major')
+                                new_mc = json.dumps(cfg).encode('utf-8')
+                                f.attrs['model_config'] = new_mc
+                                st.info('Sanitized model_config in HDF5 (removed time_major entries).')
+                            except Exception:
+                                # If JSON parsing fails, do a best-effort text replacement
+                                try:
+                                    mc_str = mc.decode('utf-8') if isinstance(mc, bytes) else str(mc)
+                                    import re
+                                    mc_str = re.sub(r'"time_major"\s*:\s*(true|false)\s*,?', '', mc_str, flags=re.IGNORECASE)
+                                    f.attrs['model_config'] = mc_str.encode('utf-8')
+                                    st.info('Performed regex sanitization of model_config.')
+                                except Exception:
+                                    pass
+
+                    # Retry loading normally after sanitization
+                    model = keras.models.load_model(model_file)
+                    with open(f'{_self.model_path}/label_encoder.pkl', 'rb') as f:
+                        label_encoder = pickle.load(f)
+                    with open(f'{_self.model_path}/scaler.pkl', 'rb') as f:
+                        scaler = pickle.load(f)
+
+                    st.success('Model loaded after sanitizing HDF5 model_config.')
+                    return model, label_encoder, scaler
+
+                except Exception as e3:
+                    st.error(f"Error loading models after fallbacks: {e3}")
+                    st.info("Please ensure Phase 3 is completed and models are saved.")
+                    return None, None, None
     
     def extract_audio_features(self, audio_path):
         """Extract 73 features from audio file"""
