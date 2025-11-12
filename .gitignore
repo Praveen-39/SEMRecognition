@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+ENV/
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit local state
+.streamlit/
+
+# temporary files
+*.log
+*.tmp
+
+# Do not ignore models/ by default - models are part of the app.
+# If your model files are large, use Git LFS or host them externally.

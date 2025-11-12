@@ -1,0 +1,13 @@
+streamlit
+numpy
+librosa
+tensorflow
+SpeechRecognition
+textblob
+plotly
+pandas
+scikit-learn
+soundfile
+audioread
+numba
+resampy
