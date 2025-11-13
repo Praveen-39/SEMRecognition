@@ -1,6 +1,8 @@
 """
 PHASE 5: Streamlit Web Application
 Complete demo app for Speech Emotion Recognition with Sarcasm Detection
+
+Version: 2.0 (cleaned model, no compatibility fallbacks)
 """
 
 import streamlit as st
