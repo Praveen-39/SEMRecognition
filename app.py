@@ -1,9 +1,15 @@
 """
 Entrypoint for the Streamlit app.
-This small wrapper lets hosting platforms run `streamlit run app.py` while keeping the main app in `results/ph5_streamlit.py`.
+Directly runs the main app from results/ph5_streamlit.py
 """
 
+import sys
+import os
+
+# Add repo root to path so we can import results module
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Import and run the main function
 from results.ph5_streamlit import main
 
-if __name__ == "__main__":
-    main()
+main()
